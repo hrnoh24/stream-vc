@@ -14,6 +14,7 @@
 ## Description
 
 An unofficial PyTorch implementation of Google's StreamVC.
+![Architecture](imgs/architecture.png)
 
 ## Installation
 
