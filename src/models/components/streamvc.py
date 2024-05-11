@@ -205,6 +205,65 @@ class LocalTransformer(Module):
             x = ff(x) + x
 
         return x
+    
+
+class SpeakerEncoder(Module):
+    def __init__(
+        self,
+        *,
+        channels = 32,
+        strides = (2, 4, 5, 8),
+        channel_mults = (2, 4, 8, 16),
+        embedding_dim = 64,
+        input_channels = 1,
+        cycle_dilations = (1, 3, 9),
+        use_gate_loop_layers = False,
+        squeeze_excite = False,
+        pad_mode = 'reflect',
+    ):
+        super().__init__()
+        
+        self.encoder = Encoder(
+            channels = channels,
+            strides = strides,
+            channel_mults = channel_mults,
+            embedding_dim = embedding_dim,
+            input_channels = input_channels,
+            cycle_dilations = cycle_dilations,
+            use_gate_loop_layers = use_gate_loop_layers,
+            squeeze_excite = squeeze_excite,
+            pad_mode = pad_mode
+        )
+        self.learnable_query = nn.Parameter(torch.randn((1, 1, embedding_dim)))
+
+    def forward(self, x, mask = None):
+        """speaker encoder
+
+        Args:
+            x (torch.FloatTensor): [B, 1, T]
+            mask (torch.FloatTensor, optional): mask for attention. Defaults to None.
+
+        Returns:
+            spkemb (torch.FloatTensor): [B, C]
+        """
+        emb = self.encoder(x) # [B, C, N]
+
+        # learnable pooling
+        B, d_k, _ = emb.shape
+        query = self.learnable_query.expand(B, -1, -1) # [B, 1, C]
+        key = emb # [B, C, N]
+        value = emb.transpose(1, 2) # [B, N, C]
+
+        score = torch.matmul(query, key) # [B, 1, N]
+        score = score / (d_k ** 0.5)
+        if exists(mask):
+            score.masked_fill_(mask==0, -1e9)
+        probs = F.softmax(score, dim=-1) # [B, 1, N]
+        out = torch.matmul(probs, value) # [B, 1, C]
+        out = out.squeeze(1) # [B, C]
+
+        return out
+
 
 class Encoder(Module):
     def __init__(
@@ -241,7 +300,8 @@ class Encoder(Module):
 
     def forward(self, x):
         return self.encoder(x)
-    
+
+
 class Decoder(Module):
     def __init__(
         self,
@@ -314,14 +374,26 @@ class Decoder(Module):
             x = block(x, cond)
         out = self.decoder_out(x)
         return out
+
+
+class StreamVC(Module):
+    def __init__(
+        self
+    ) -> None:
+        super().__init__()
+        self.enc = Encoder()
+        self.dec = Decoder()
+        self.spk_enc = SpeakerEncoder()
+
+    def forward(self, x):
+        emb = self.enc(x)
+        spk_emb = self.spk_enc(x)
+        out = self.dec(emb, spk_emb)
+        return out
+    
     
 if __name__ == "__main__":
-    enc = Encoder()
-    dec = Decoder()
-
-    x = torch.randn(1, 1, 44100)
-    spk_emb = torch.randn(1, 64)
-
-    emb = enc(x)
-    out = dec(emb, spk_emb)
-    print(emb.shape, spk_emb.shape, out.shape)
+    model = StreamVC()
+    x = torch.randn(2, 1, 24000)
+    out = model(x)
+    print(out.shape)
