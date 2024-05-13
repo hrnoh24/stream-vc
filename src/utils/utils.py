@@ -1,4 +1,6 @@
 import warnings
+import requests
+from tqdm import tqdm
 from importlib.util import find_spec
 from typing import Any, Callable, Dict, Optional, Tuple
 
@@ -95,7 +97,9 @@ def task_wrapper(task_func: Callable) -> Callable:
     return wrap
 
 
-def get_metric_value(metric_dict: Dict[str, Any], metric_name: Optional[str]) -> Optional[float]:
+def get_metric_value(
+    metric_dict: Dict[str, Any], metric_name: Optional[str]
+) -> Optional[float]:
     """Safely retrieves value of the metric logged in LightningModule.
 
     :param metric_dict: A dict containing metric values.
@@ -117,3 +121,19 @@ def get_metric_value(metric_dict: Dict[str, Any], metric_name: Optional[str]) ->
     log.info(f"Retrieved metric value! <{metric_name}={metric_value}>")
 
     return metric_value
+
+
+def download(url: str, fname: str):
+    resp = requests.get(url, stream=True)
+    total = int(resp.headers.get("content-length", 0))
+    # Can also replace 'file' with a io.BytesIO object
+    with open(fname, "wb") as file, tqdm(
+        desc=fname,
+        total=total,
+        unit="iB",
+        unit_scale=True,
+        unit_divisor=1024,
+    ) as bar:
+        for data in resp.iter_content(chunk_size=1024):
+            size = file.write(data)
+            bar.update(size)
