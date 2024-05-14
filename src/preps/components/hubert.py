@@ -5,7 +5,7 @@ import fairseq
 from src.utils.utils import download
 
 
-class ExtractHubertFeatures:
+class Hubert:
     def __init__(
         self,
         data_root: str,
@@ -43,7 +43,10 @@ class ExtractHubertFeatures:
 
 
 if __name__ == "__main__":
-    model = ExtractHubertFeatures("dummy", device="cpu")
-    wav = torch.rand(1, 16000)
+    from src.data.components.audio_utils import AudioUtils
+
+    model = Hubert("dummy", device="cpu")
+    wav, sr = AudioUtils.load_audio("data/sample.wav", sample_rate=16000)
+    wav = AudioUtils.to_mono(wav)
     x = model.extract_features(wav, output_layer=7)
-    print(x.shape)
+    print(x.shape, wav.shape[-1] // 320)
