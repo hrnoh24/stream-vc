@@ -8,11 +8,9 @@ from src.utils.utils import download
 class Hubert:
     def __init__(
         self,
-        data_root: str,
         ckpt_path: str = "pretrained_models/hubert/hubert_base_ls960.pt",
         device: str = "cuda",
     ):
-        self.data_root = data_root
         self.ckpt_path = ckpt_path
         self.device = device
         if not os.path.exists(ckpt_path):

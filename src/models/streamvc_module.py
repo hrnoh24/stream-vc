@@ -49,8 +49,8 @@ class StreamVCModule(LightningModule):
         self,
         generator: torch.nn.Module,
         discriminator: torch.nn.Module,
-        optim_g: torch.optim.Optimizer,
-        optim_d: torch.optim.Optimizer,
+        optimizer_g: torch.optim.Optimizer,
+        optimizer_d: torch.optim.Optimizer,
         scheduler_g: torch.optim.lr_scheduler,
         scheduler_d: torch.optim.lr_scheduler,
         compile: bool,
@@ -72,8 +72,8 @@ class StreamVCModule(LightningModule):
 
         self.generator = generator
         self.discriminator = discriminator
-        self.optim_g = optim_g
-        self.optim_d = optim_d
+        self.optimizer_g = optimizer_g
+        self.optimizer_d = optimizer_d
         self.scheduler_g = scheduler_g
         self.scheduler_d = scheduler_d
 
