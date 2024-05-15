@@ -447,14 +447,14 @@ class StreamVC(Module):
     def __init__(self) -> None:
         super().__init__()
         self.enc = Encoder()
-        self.dec = Decoder()
+        self.dec = Decoder(embedding_dim=64 + 10)
         self.spk_enc = SpeakerEncoder()
 
         self.norm = nn.LayerNorm(64)
         self.proj = nn.Linear(64, 100)
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, x, train=False):
+    def forward(self, x, pitch, energy, train=False):
         h = self.enc(x)
         contents = h.detach()
 
@@ -467,12 +467,16 @@ class StreamVC(Module):
             h = self.proj(h)  # [B, N, C]
             logits = self.softmax(h)
 
-        out = self.dec(contents, spk)
+        # decode
+        dec_inp = torch.cat([contents, pitch, energy], dim=1)
+        out = self.dec(dec_inp, spk)
         return out, logits
 
 
 if __name__ == "__main__":
     model = StreamVC()
     x = torch.randn(2, 1, 24000)
-    out, logits = model(x, train=False)
+    pitch = torch.randn(2, 9, 75)
+    energy = torch.randn(2, 1, 75)
+    out, logits = model(x, pitch, energy, train=False)
     print(out.shape, logits)
