@@ -109,13 +109,13 @@ class StreamVCModule(LightningModule):
         :param batch_idx: The index of the current batch.
         :return: A tensor of losses between model predictions and targets.
         """
-        y, pitch, enery, labels = batch
+        y, pitch, energy, labels = batch
 
         optimizer_g, optimizer_d = self.optimizers()
 
         # Train discriminator
         self.toggle_optimizer(optimizer_d)
-        self.y_hat, logits = self.forward(y)
+        self.y_hat, logits = self.forward(y, pitch, energy)
         y_d_hat_rs, y_d_hat_gs, _, _ = self.discriminator(y, self.y_hat.detach())
         loss_disc, _, _ = discriminator_loss(y_d_hat_rs, y_d_hat_gs)
 
@@ -141,11 +141,11 @@ class StreamVCModule(LightningModule):
 
         self.log_dict(
             {
-                "g_loss": loss_gen,
-                "fm_loss": loss_fm,
-                "recon_loss": loss_recon,
-                "content_loss": loss_content,
-                "loss": loss_all,
+                "train/g_loss": loss_gen,
+                "train/fm_loss": loss_fm,
+                "train/recon_loss": loss_recon,
+                "train/content_loss": loss_content,
+                "train/loss": loss_all,
             },
             prog_bar=True,
         )
