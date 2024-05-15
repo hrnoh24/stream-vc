@@ -115,11 +115,11 @@ class StreamVCModule(LightningModule):
 
         # Train discriminator
         self.toggle_optimizer(optimizer_d)
-        self.y_hat, logits = self.forward(y, pitch, energy)
-        y_d_hat_rs, y_d_hat_gs, _, _ = self.discriminator(y, self.y_hat.detach())
+        y_hat, logits = self.forward(y, pitch, energy)
+        y_d_hat_rs, y_d_hat_gs, _, _ = self.discriminator(y, y_hat.detach())
         loss_disc, _, _ = discriminator_loss(y_d_hat_rs, y_d_hat_gs)
 
-        self.log("d_loss", loss_disc, prog_bar=True)
+        self.log("train/d_loss", loss_disc, prog_bar=True)
         self.manual_backward(loss_disc)
         optimizer_d.step()
         optimizer_d.zero_grad()
@@ -127,11 +127,11 @@ class StreamVCModule(LightningModule):
 
         # Train generator
         self.toggle_optimizer(optimizer_g)
-        y_d_hat_r, y_d_hat_g, fmap_r, fmap_g = self.discriminator(y, self.y_hat)
+        y_d_hat_r, y_d_hat_g, fmap_r, fmap_g = self.discriminator(y, y_hat)
 
         loss_fm = feature_loss(fmap_r, fmap_g)
         loss_gen, _ = generator_loss(y_d_hat_r, y_d_hat_g)
-        loss_recon = spectral_reconstruction_loss(y, self.y_hat)
+        loss_recon = spectral_reconstruction_loss(y, y_hat)
         loss_content = self.criterion(logits, labels)
         loss_all = 100 * loss_fm + loss_gen + loss_recon + loss_content
         self.manual_backward(loss_all)
@@ -163,7 +163,27 @@ class StreamVCModule(LightningModule):
             labels.
         :param batch_idx: The index of the current batch.
         """
-        # loss, preds, targets = self.model_step(batch)
+        y, pitch, energy, labels = batch
+
+        y_hat, logits = self.forward(y, pitch, energy)
+        y_d_hat_r, y_d_hat_g, fmap_r, fmap_g = self.discriminator(y, y_hat)
+
+        loss_fm = feature_loss(fmap_r, fmap_g)
+        loss_gen, _ = generator_loss(y_d_hat_r, y_d_hat_g)
+        loss_recon = spectral_reconstruction_loss(y, y_hat)
+        loss_content = self.criterion(logits, labels)
+        loss_all = 100 * loss_fm + loss_gen + loss_recon + loss_content
+
+        self.log_dict(
+            {
+                "val/g_loss": loss_gen,
+                "val/fm_loss": loss_fm,
+                "val/recon_loss": loss_recon,
+                "val/content_loss": loss_content,
+                "val/loss": loss_all,
+            },
+            prog_bar=True,
+        )
 
         # update and log metrics
         # self.val_loss(loss)
