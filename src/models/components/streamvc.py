@@ -450,29 +450,29 @@ class StreamVC(Module):
         self.dec = Decoder()
         self.spk_enc = SpeakerEncoder()
 
-        self.proj = nn.Linear(64, 256)
-        self.label_embedding = nn.Embedding(100, 256)
+        self.norm = nn.LayerNorm(64)
+        self.proj = nn.Linear(64, 100)
+        self.softmax = nn.Softmax(dim=-1)
 
-    def logits(self, x: torch.Tensor) -> torch.Tensor:
-        logits = torch.cosine_similarity(
-            x.unsqueeze(2),
-            self.label_embedding.weight.unsqueeze(0).unsqueeze(0),
-            dim=-1,
-        )
-        return logits / 0.1
+    def forward(self, x, train=False):
+        h = self.enc(x)
+        contents = h.detach()
 
-    def forward(self, x):
-        emb = self.enc(x)
-        # get logit
-        logits = self.logits(self.proj(emb.transpose(1, 2)))
+        spk = self.spk_enc(x)
 
-        spk_emb = self.spk_enc(x)
-        out = self.dec(emb.detach(), spk_emb)
+        # get logits
+        logits = None
+        if train:
+            h = self.norm(h.transpose(1, 2))
+            h = self.proj(h)  # [B, N, C]
+            logits = self.softmax(h)
+
+        out = self.dec(contents, spk)
         return out, logits
 
 
 if __name__ == "__main__":
     model = StreamVC()
     x = torch.randn(2, 1, 24000)
-    out, logits = model(x)
-    print(out.shape, logits.shape)
+    out, logits = model(x, train=False)
+    print(out.shape, logits)
