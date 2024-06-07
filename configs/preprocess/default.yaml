@@ -2,3 +2,11 @@ tasks:
   extract_hubert:
     _target_: src.preps.extract_hubert.ExtractHubert
     root_dir: ${paths.data_dir}
+    num_workers: 1
+    device: cpu
+
+  extract_pitch:
+    _target_: src.preps.extract_yin.ExtractYin
+    root_dir: ${paths.data_dir}
+    num_workers: 1
+    device: cpu

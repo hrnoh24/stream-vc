@@ -4,30 +4,26 @@ import torch
 from src.preps.components.hubert import Hubert
 from src.data.components.audio_utils import AudioUtils
 
-from functools import partial
-from multiprocessing import Process
+from src.preps.extract_base import BaseExtractor
 
 import tqdm
 
-
-class ExtractHubert:
-    def __init__(self, root_dir: list, device: str = "cpu"):
-        self.root_dir = root_dir
-        self.device = device
-        
-        # glob all wavs
-        self.filelist = glob.glob(os.path.join(root_dir, "**/*.wav"), recursive=True)
-
+class ExtractHubert(BaseExtractor):
+    def __init__(self, 
+                 root_dir: str, 
+                 num_workers: int = 1,
+                 device: str = "cpu"):
+        super().__init__(root_dir, num_workers=num_workers, device=device)
         self.model = None
 
     def _load_model(self):
         self.hubert = Hubert(device=self.device)
 
-    def _run(self, rank):
+    def _run(self, rank, filelist):
         os.environ["CUDA_VISIBLE_DEVICES"] = str(rank)
         self._load_model()
 
-        for fpath in tqdm.tqdm(self.filelist):
+        for fpath in tqdm.tqdm(filelist):
             try:
                 wav, sr = AudioUtils.load_audio(fpath, sample_rate=16000)
                 wav = AudioUtils.to_mono(wav)
@@ -35,6 +31,7 @@ class ExtractHubert:
 
                 # extract features
                 x = self.hubert.extract_features(wav, output_layer=7)
+                print(x.shape)
 
                 # save extracted features
                 save_path = fpath.replace(".wav", ".hubert.pt")
@@ -43,20 +40,6 @@ class ExtractHubert:
                 print(f"Error processing {fpath}: {e}")
                 with open("error.log", "a") as f:
                     f.write(f"[ExtractHubert] {fpath}: {e}\n")
-
-    def run(self):
-        num_gpus = torch.cuda.device_count()
-        if num_gpus > 1:
-            processes = []
-            for rank in range(num_gpus):
-                p = Process(target=partial(self._run, rank))
-                p.start()
-                processes.append(p)
-
-            for p in processes:
-                p.join()
-        else:
-            self._run(0)
 
 
 if __name__ == "__main__":

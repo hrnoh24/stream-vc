@@ -39,7 +39,6 @@ log = RankedLogger(__name__, rank_zero_only=True)
 
 
 def preprocess(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    print(cfg.preprocess.tasks)
     for task_name, task_cfg in cfg.preprocess.tasks.items():
         print(f"=============== Running task: {task_name} ===============")
         task = hydra.utils.instantiate(task_cfg)
