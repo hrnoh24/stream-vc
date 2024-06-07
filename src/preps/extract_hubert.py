@@ -11,9 +11,12 @@ import tqdm
 
 
 class ExtractHubert:
-    def __init__(self, filelist: list, device: str = "cpu"):
-        self.filelist = filelist
+    def __init__(self, root_dir: list, device: str = "cpu"):
+        self.root_dir = root_dir
         self.device = device
+        
+        # glob all wavs
+        self.filelist = glob.glob(os.path.join(root_dir, "**/*.wav"), recursive=True)
 
         self.model = None
 
@@ -25,16 +28,21 @@ class ExtractHubert:
         self._load_model()
 
         for fpath in tqdm.tqdm(self.filelist):
-            wav, sr = AudioUtils.load_audio(fpath, sample_rate=16000)
-            wav = AudioUtils.to_mono(wav)
-            wav = wav.to(self.device)
+            try:
+                wav, sr = AudioUtils.load_audio(fpath, sample_rate=16000)
+                wav = AudioUtils.to_mono(wav)
+                wav = wav.to(self.device)
 
-            # extract features
-            x = self.hubert.extract_features(wav, output_layer=7)
+                # extract features
+                x = self.hubert.extract_features(wav, output_layer=7)
 
-            # save extracted features
-            save_path = fpath.replace(".wav", ".hubert.pt")
-            torch.save(x, save_path)
+                # save extracted features
+                save_path = fpath.replace(".wav", ".hubert.pt")
+                torch.save(x, save_path)
+            except Exception as e:
+                print(f"Error processing {fpath}: {e}")
+                with open("error.log", "a") as f:
+                    f.write(f"[ExtractHubert] {fpath}: {e}\n")
 
     def run(self):
         num_gpus = torch.cuda.device_count()

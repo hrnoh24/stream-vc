@@ -1,0 +1,4 @@
+tasks:
+  extract_hubert:
+    _target_: src.preps.extract_hubert.ExtractHubert
+    root_dir: ${paths.data_dir}
