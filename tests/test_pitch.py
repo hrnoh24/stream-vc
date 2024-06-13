@@ -1,25 +1,8 @@
-""" Yin Pitch Estimation Algorithm
-
-This is a fully-vectorized implementation of the Yin pitch estimation
-algorithm for PyTorch. It is based on the excellent NumPy baseline by
-Patrice Guyot (github.com/patriceguyot), with changes for batching and
-vectorization of the iterative search.
-
-References:
-    https://asa.scitation.org/doi/10.1121/1.1458024
-    https://github.com/patriceguyot/Yin
-
-License:
-    MIT License
-    Copyright © 2022 Brent M. Spell
-
-"""
-
 import typing as T
-
 import numpy as np
 import torch
-
+import librosa
+import matplotlib.pyplot as plt
 
 def estimate(
     signal: T.Union[T.List, np.ndarray, torch.Tensor],
@@ -28,7 +11,7 @@ def estimate(
     pitch_max: float = 600,
     frame_stride: float = 0.02,
     threshold: float = 0.1,
-) -> torch.Tensor:
+) -> T.Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """estimate the pitch (fundamental frequency) of a signal
 
     This function attempts to determine the pitch of a signal via the
@@ -57,6 +40,8 @@ def estimate(
         pitch: PyTorch tensor of pitch estimations, one for each frame of
             the windowed signal, an entry of 0 corresponds to a non-periodic
             frame, where no periodic signal was detected
+        cmnd_value: Cumulative Mean Normalized Difference Value at the estimated period
+        unvoiced_predicate: Estimated Unvoiced (Aperiodic) Signal Predicate, 1 if unvoiced, 0 if voiced
 
     """
 
@@ -72,7 +57,7 @@ def estimate(
     frames = _frame(signal, frame_length, frame_stride)
     cmdf = _diff(frames, tau_max)[..., tau_min:]
     tau = _search(cmdf, tau_max, threshold)
-    
+
     # calculate the CMND value at the estimated period
     cmnd_value = cmdf[torch.arange(cmdf.size(0)), tau]
     
@@ -131,3 +116,52 @@ def _search(cmdf: torch.Tensor, tau_max: int, threshold: float) -> torch.Tensor:
 
     # find the first period satisfying both constraints
     return (beyond_threshold & increasing_slope).int().argmax(-1)
+
+
+def plot_features(signal, sr, pitch, cmnd_value, unvoiced_predicate, hop_length):
+    plt.figure(figsize=(15, 10))
+
+    # 시간 벡터 생성
+    times = np.arange(pitch.shape[0]) * hop_length / sr
+
+    # 추정된 피치 시각화
+    plt.subplot(3, 1, 1)
+    plt.plot(times, pitch.numpy(), label='Estimated f0', color='yellow', linewidth=2)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Frequency (Hz)')
+    plt.title('Estimated Pitch (f0)')
+    plt.legend()
+
+    # CMND 값 시각화
+    plt.subplot(3, 1, 2)
+    plt.plot(times, cmnd_value.numpy(), label='CMND Value', color='green', linewidth=2)
+    plt.xlabel('Time (s)')
+    plt.ylabel('CMND Value')
+    plt.title('Cumulative Mean Normalized Difference Value')
+    plt.legend()
+
+    # Unvoiced Predicate 시각화
+    plt.subplot(3, 1, 3)
+    plt.plot(times, unvoiced_predicate.numpy(), label='Unvoiced Predicate', color='blue', linewidth=2, linestyle='dashed')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Unvoiced (0 or 1)')
+    plt.title('Unvoiced Predicate')
+    plt.legend()
+    
+    plt.tight_layout()
+    plt.show()
+
+# 예제 사용법
+if __name__ == "__main__":
+    # 샘플링 레이트 16000으로 설정
+    sr = 16000
+    hop_length = 256
+
+    # 예제 오디오 신호 로드 및 리샘플링
+    signal, _ = librosa.load(librosa.ex('trumpet'), sr=sr)
+    
+    # 특징 추출
+    pitch, cmnd_value, unvoiced_predicate = estimate(signal, sr, frame_stride=hop_length / sr, threshold=0.15)
+
+    # 시각화
+    plot_features(signal, sr, pitch, cmnd_value, unvoiced_predicate, hop_length)
