@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torchaudio
+import librosa
 
 
 class AudioUtils:
@@ -28,6 +29,13 @@ class AudioUtils:
 
         start = np.random.randint(0, max_duration - duration)
         return audio[:, start : start + duration]
+    
+    @staticmethod
+    def frame(audio: torch.Tensor, frame_length: int, hop_length: int) -> torch.Tensor:
+        audio_np = audio.numpy()
+        audio_np = np.pad(audio_np, (0, frame_length // 2), mode="constant")
+        frames = librosa.util.frame(audio_np, frame_length=frame_length, hop_length=hop_length)
+        return torch.tensor(frames)
 
 
 if __name__ == "__main__":

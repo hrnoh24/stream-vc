@@ -276,7 +276,7 @@ class SpeakerEncoder(Module):
             squeeze_excite=squeeze_excite,
             pad_mode=pad_mode,
         )
-        self.learnable_query = nn.Parameter(torch.randn((1, 1, embedding_dim)))
+        self.learnable_query = nn.Parameter(torch.randn((1, 1, embedding_dim)), requires_grad=True)
 
     def forward(self, x, mask=None):
         """speaker encoder

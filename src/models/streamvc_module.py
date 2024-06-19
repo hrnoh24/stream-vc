@@ -69,7 +69,7 @@ class StreamVCModule(LightningModule):
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
-        self.save_hyperparameters(logger=False)
+        self.save_hyperparameters(logger=False, ignore=['generator', 'discriminator'])
         self.automatic_optimization = False
 
         self.generator = generator
@@ -121,20 +121,23 @@ class StreamVCModule(LightningModule):
 
         self.log("train/d_loss", loss_disc, prog_bar=True)
         self.manual_backward(loss_disc)
+        self.clip_gradients(optimizer_d, gradient_clip_val=1, gradient_clip_algorithm="norm")
         optimizer_d.step()
         optimizer_d.zero_grad()
         self.untoggle_optimizer(optimizer_d)
 
         # Train generator
         self.toggle_optimizer(optimizer_g)
+        y_hat, logits = self.forward(y, pitch, energy)
         y_d_hat_r, y_d_hat_g, fmap_r, fmap_g = self.discriminator(y, y_hat)
 
         loss_fm = feature_loss(fmap_r, fmap_g)
-        loss_gen, _ = generator_loss(y_d_hat_r, y_d_hat_g)
+        loss_gen, _ = generator_loss(y_d_hat_g)
         loss_recon = spectral_reconstruction_loss(y, y_hat)
-        loss_content = self.criterion(logits, labels)
+        loss_content = self.criterion(logits.transpose(1, 2), labels)
         loss_all = 100 * loss_fm + loss_gen + loss_recon + loss_content
         self.manual_backward(loss_all)
+        self.clip_gradients(optimizer_g, gradient_clip_val=1, gradient_clip_algorithm="norm")
         optimizer_g.step()
         optimizer_g.zero_grad()
         self.untoggle_optimizer(optimizer_g)
@@ -169,9 +172,9 @@ class StreamVCModule(LightningModule):
         y_d_hat_r, y_d_hat_g, fmap_r, fmap_g = self.discriminator(y, y_hat)
 
         loss_fm = feature_loss(fmap_r, fmap_g)
-        loss_gen, _ = generator_loss(y_d_hat_r, y_d_hat_g)
+        loss_gen, _ = generator_loss(y_d_hat_g)
         loss_recon = spectral_reconstruction_loss(y, y_hat)
-        loss_content = self.criterion(logits, labels)
+        loss_content = self.criterion(logits.transpose(1, 2), labels)
         loss_all = 100 * loss_fm + loss_gen + loss_recon + loss_content
 
         self.log_dict(
@@ -214,17 +217,17 @@ class StreamVCModule(LightningModule):
         """Lightning hook that is called when a test epoch ends."""
         pass
 
-    def setup(self, stage: str) -> None:
-        """Lightning hook that is called at the beginning of fit (train + validate), validate,
-        test, or predict.
+    # def setup(self, stage: str) -> None:
+    #     """Lightning hook that is called at the beginning of fit (train + validate), validate,
+    #     test, or predict.
 
-        This is a good hook when you need to build models dynamically or adjust something about
-        them. This hook is called on every process when using DDP.
+    #     This is a good hook when you need to build models dynamically or adjust something about
+    #     them. This hook is called on every process when using DDP.
 
-        :param stage: Either `"fit"`, `"validate"`, `"test"`, or `"predict"`.
-        """
-        if self.hparams.compile and stage == "fit":
-            self.net = torch.compile(self.net)
+    #     :param stage: Either `"fit"`, `"validate"`, `"test"`, or `"predict"`.
+    #     """
+    #     if self.hparams.compile and stage == "fit":
+    #         self.net = torch.compile(self.net)
 
     def configure_optimizers(self) -> Dict[str, Any]:
         """Choose what optimizers and learning-rate schedulers to use in your optimization.
@@ -235,14 +238,14 @@ class StreamVCModule(LightningModule):
 
         :return: A dict containing the configured optimizers and learning-rate schedulers to be used for training.
         """
-        optim_g = self.optim_g(params=self.generator.parameters())
+        optimizer_g = self.optimizer_g(params=self.generator.parameters())
         if self.scheduler_g is not None:
-            scheduler_g = self.scheduler_g(optimizer=optim_g)
+            scheduler_g = self.scheduler_g(optimizer=optimizer_g)
 
-        optim_d = self.optim_d(params=self.discriminator.parameters())
+        optimizer_d = self.optimizer_d(params=self.discriminator.parameters())
         if self.scheduler_d is not None:
-            scheduler_d = self.scheduler_d(optimizer=optim_d)
-        return [optim_g, optim_d], [scheduler_g, scheduler_d]
+            scheduler_d = self.scheduler_d(optimizer=optimizer_d)
+        return [optimizer_g, optimizer_d], [scheduler_g, scheduler_d]
 
 
 if __name__ == "__main__":

@@ -198,6 +198,7 @@ class MultiScaleSTFTDiscriminator(nn.Module):
 
 class Discriminator(nn.Module):
     def __init__(self, filters: int = 32):
+        super().__init__()
         self.msstftd = MultiScaleSTFTDiscriminator(filters=filters)
 
     def forward(self, y: torch.Tensor, y_hat: torch.Tensor):

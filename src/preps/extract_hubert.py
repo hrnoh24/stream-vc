@@ -27,11 +27,10 @@ class ExtractHubert(BaseExtractor):
             try:
                 wav, sr = AudioUtils.load_audio(fpath, sample_rate=16000)
                 wav = AudioUtils.to_mono(wav)
-                wav = wav.to(self.device)
+                wav = wav.unsqueeze(0).to(self.device)
 
                 # extract features
-                x = self.hubert.extract_features(wav, output_layer=7)
-                print(x.shape)
+                x = self.hubert.extract_features(wav)
 
                 # save extracted features
                 save_path = fpath.replace(".wav", ".hubert.pt")
