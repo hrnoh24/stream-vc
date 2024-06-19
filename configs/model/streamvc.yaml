@@ -1,0 +1,33 @@
+_target_: src.models.streamvc_module.StreamVCModule
+generator:
+  _target_: src.models.components.streamvc.StreamVC
+
+discriminator:
+  _target_: src.models.components.msstftd.Discriminator
+  filters: 32
+
+optimizer_g:
+  _target_: torch.optim.AdamW
+  _partial_: True
+  lr: 1e-4
+  betas: [0.8, 0.99]
+  eps: 1e-9
+  
+optimizer_d:
+  _target_: torch.optim.AdamW
+  _partial_: True
+  lr: 2e-4
+  betas: [0.8, 0.99]
+  eps: 1e-9
+
+scheduler_g:
+  _target_: torch.optim.lr_scheduler.ExponentialLR
+  _partial_: True
+  gamma: 0.999875
+
+scheduler_d:
+  _target_: torch.optim.lr_scheduler.ExponentialLR
+  _partial_: True
+  gamma: 0.999875
+
+compile: True

@@ -1,0 +1,9 @@
+_target_: src.data.audio_datamodule.AudioDataModule
+data_dir: ${paths.data_dir}
+filelist_dir: filelists
+train_filelist: train_filelists.txt
+val_filelist: val_filelists.txt
+valid_ratio: 0.1
+batch_size: 128 # Needs to be divisible by the number of devices (e.g., if in a distributed setup)
+num_workers: 32
+pin_memory: False
