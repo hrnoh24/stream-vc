@@ -62,6 +62,9 @@ python src/train.py trainer.max_epochs=20 data.batch_size=64
 
 ## Reference
 
-https://github.com/lucidrains/audiolm-pytorch/tree/main
-https://github.com/facebookresearch/encodec/tree/main
-https://github.com/jaywalnut310/vits/tree/main
+https://github.com/lucidrains/audiolm-pytorch/tree/main  
+https://github.com/facebookresearch/encodec/tree/main  
+https://github.com/jaywalnut310/vits/tree/main  
+https://github.com/wesbz/SoundStream/blob/main/main.py  
+https://github.com/bshall/soft-vc   
+https://github.com/descriptinc/melgan-neurips/tree/master
