@@ -11,7 +11,7 @@ def spectral_reconstruction_loss(x, G_x, sr=16000, eps=1e-4, device="cpu"):
             sample_rate=sr,
             n_fft=s,
             hop_length=s // 4,
-            n_mels=8,
+            n_mels=64,
             wkwargs={"device": device},
         ).to(device)
         S_x = melspec(x)

@@ -9,7 +9,8 @@ from src.models.losses import (
     generator_loss,
     discriminator_loss,
     feature_loss,
-    spectral_reconstruction_loss,
+    # spectral_reconstruction_loss,
+    ReconstructionLoss
 )
 
 
@@ -80,6 +81,7 @@ class StreamVCModule(LightningModule):
         self.scheduler_d = scheduler_d
 
         self.criterion = torch.nn.CrossEntropyLoss()
+        self.reconstruction_loss = ReconstructionLoss()
 
     def forward(
         self, x: torch.Tensor, pitch: torch.Tensor, energy: torch.Tensor
@@ -133,7 +135,7 @@ class StreamVCModule(LightningModule):
 
         loss_fm = feature_loss(fmap_r, fmap_g)
         loss_gen, _ = generator_loss(y_d_hat_g)
-        loss_recon = spectral_reconstruction_loss(y, y_hat)
+        loss_recon = self.reconstruction_loss(y, y_hat)
         loss_content = self.criterion(logits.transpose(1, 2), labels)
         loss_all = 100 * loss_fm + loss_gen + loss_recon + loss_content
         self.manual_backward(loss_all)
@@ -173,7 +175,7 @@ class StreamVCModule(LightningModule):
 
         loss_fm = feature_loss(fmap_r, fmap_g)
         loss_gen, _ = generator_loss(y_d_hat_g)
-        loss_recon = spectral_reconstruction_loss(y, y_hat)
+        loss_recon = self.reconstruction_loss(y, y_hat)
         loss_content = self.criterion(logits.transpose(1, 2), labels)
         loss_all = 100 * loss_fm + loss_gen + loss_recon + loss_content
 
