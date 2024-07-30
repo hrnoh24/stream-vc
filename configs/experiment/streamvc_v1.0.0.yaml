@@ -23,4 +23,4 @@ data:
 
 trainer:
   min_epochs: 10
-  max_epochs: 10
+  max_epochs: 500
